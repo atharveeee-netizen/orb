@@ -27,7 +27,19 @@ This eliminates the need for App Store approvals, client-side installations, or 
 3. **Remote Control**
    - Left/Right keyboard simulation (mapped to Arrow Keys / Space / F5) for controlling PowerPoint, Keynote, and web slides.
 
-## Installation
+## 🚀 Quick Start (No Python Required)
+
+The easiest way to use Orb on Windows is to download the standalone executable. No terminal or Python installation is required.
+
+1. Go to the [Releases tab](../../releases) on GitHub.
+2. Download `OrbServer.exe`.
+3. Double-click to run it. It runs silently in the background and will pop up a window showing you the IP address to connect to on your phone.
+
+---
+
+## 🛠 Developer Installation
+
+If you want to run Orb from the source code:
 
 Ensure you have Python 3.10+ installed.
 
@@ -38,8 +50,6 @@ python -m venv venv
 .\venv\Scripts\activate  # On Windows
 pip install -r requirements.txt
 ```
-
-*(Note: `requirements.txt` generation pending, manually install: `flask flask-socketio eventlet pyautogui PyQt5 qrcode`)*
 
 ## Usage
 
