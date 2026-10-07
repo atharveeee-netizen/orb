@@ -1,0 +1,383 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="theme-color" content="#000000">
+    <title>Orb</title>
+    <script src="https://unpkg.com/feather-icons"></script>
+    <style>
+        :root {
+            --bg: #000000;
+            --surface: #111111;
+            --surface-hover: #1a1a1a;
+            --border: #222222;
+            --text: #ffffff;
+            --text-dim: #888888;
+            --accent: #ffffff;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            -webkit-tap-highlight-color: transparent;
+            -webkit-touch-callout: none;
+            user-select: none;
+            -webkit-user-select: none;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", sans-serif;
+            background-color: var(--bg);
+            color: var(--text);
+            overflow: hidden;
+            width: 100vw;
+            height: 100vh;
+            overscroll-behavior-y: none;
+        }
+
+        #app {
+            display: flex;
+            flex-direction: column;
+            width: 100%;
+            height: 100%;
+            padding-top: env(safe-area-inset-top);
+            padding-bottom: env(safe-area-inset-bottom);
+        }
+
+        /* View System */
+        .views-container {
+            flex: 1;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .view {
+            position: absolute;
+            inset: 0;
+            display: flex;
+            flex-direction: column;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.2s ease-out;
+        }
+
+        .view.active {
+            opacity: 1;
+            pointer-events: auto;
+        }
+
+        /* Minimal Header */
+        .header {
+            padding: 24px;
+        }
+        .header h1 {
+            font-size: 24px;
+            font-weight: 600;
+            letter-spacing: -0.5px;
+        }
+
+        /* Trackpad */
+        .trackpad-surface {
+            flex: 1;
+            margin: 0 16px 16px 16px;
+            background-color: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 24px;
+            position: relative;
+            touch-action: none;
+        }
+
+        .scroll-zone {
+            position: absolute;
+            right: 0;
+            top: 0;
+            bottom: 0;
+            width: 60px;
+            border-left: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .scroll-indicator {
+            width: 4px;
+            height: 40px;
+            background-color: var(--border);
+            border-radius: 2px;
+        }
+
+        /* Drawing */
+        #view-drawing { background-color: var(--bg); }
+        canvas { width: 100%; height: 100%; touch-action: none; }
+        
+        .btn-clear {
+            position: absolute;
+            bottom: 24px;
+            right: 24px;
+            width: 56px;
+            height: 56px;
+            border-radius: 28px;
+            background-color: var(--surface);
+            border: 1px solid var(--border);
+            color: var(--text);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .btn-clear:active { background-color: var(--surface-hover); }
+
+        /* Presentation */
+        .presentation-grid {
+            flex: 1;
+            padding: 0 24px 24px 24px;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            grid-template-rows: 1fr 1fr;
+            gap: 16px;
+        }
+        
+        .btn-slide {
+            background-color: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 24px;
+            color: var(--text);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .btn-slide:active { background-color: var(--surface-hover); }
+        .btn-slide svg { width: 32px; height: 32px; }
+
+        .btn-primary {
+            grid-column: 1 / -1;
+            background-color: var(--accent);
+            color: var(--bg);
+            border: none;
+            border-radius: 24px;
+            font-size: 18px;
+            font-weight: 600;
+        }
+        .btn-primary:active { opacity: 0.8; }
+
+        /* Tab Bar */
+        .tab-bar {
+            display: flex;
+            justify-content: space-around;
+            padding: 12px 20px 16px 20px;
+            background-color: var(--bg);
+            border-top: 1px solid var(--border);
+        }
+        
+        .tab-item {
+            background: none;
+            border: none;
+            color: var(--text-dim);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 4px;
+            padding: 8px 16px;
+        }
+        .tab-item svg { width: 20px; height: 20px; }
+        .tab-item span { font-size: 11px; font-weight: 500; }
+        .tab-item.active { color: var(--accent); }
+
+    </style>
+</head>
+<body>
+
+    <div id="app">
+        <div class="views-container">
+            
+            <!-- Trackpad Mode -->
+            <div class="view active" id="view-trackpad">
+                <div class="header">
+                    <h1>Orb</h1>
+                </div>
+                <div class="trackpad-surface" id="trackpad-area">
+                    <div class="scroll-zone" id="scroll-zone">
+                        <div class="scroll-indicator"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Drawing Mode -->
+            <div class="view" id="view-drawing">
+                <div class="header" style="position: absolute; pointer-events: none; z-index: 10;">
+                    <h1>Canvas</h1>
+                </div>
+                <canvas id="draw-canvas"></canvas>
+                <div class="btn-clear" id="btn-clear">
+                    <i data-feather="trash-2"></i>
+                </div>
+            </div>
+
+            <!-- Presentation Mode -->
+            <div class="view" id="view-presentation">
+                <div class="header">
+                    <h1>Slides</h1>
+                </div>
+                <div class="presentation-grid">
+                    <button class="btn-slide" onclick="sendSlide('prev')"><i data-feather="arrow-left"></i></button>
+                    <button class="btn-slide" onclick="sendSlide('next')"><i data-feather="arrow-right"></i></button>
+                    <button class="btn-primary" onclick="sendSlide('play')">Play</button>
+                </div>
+            </div>
+
+        </div>
+
+        <!-- Tab Bar -->
+        <div class="tab-bar">
+            <button class="tab-item active" onclick="switchView('trackpad', this)">
+                <i data-feather="mouse-pointer"></i>
+                <span>Pad</span>
+            </button>
+            <button class="tab-item" onclick="switchView('drawing', this)">
+                <i data-feather="pen-tool"></i>
+                <span>Draw</span>
+            </button>
+            <button class="tab-item" onclick="switchView('presentation', this)">
+                <i data-feather="monitor"></i>
+                <span>Slides</span>
+            </button>
+        </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.min.js"></script>
+    <script>
+        feather.replace();
+        const socket = io();
+
+        function haptic() {
+            if (navigator.vibrate) navigator.vibrate(10);
+        }
+
+        function switchView(mode, btnElement) {
+            haptic();
+            document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+            document.querySelectorAll('.tab-item').forEach(b => b.classList.remove('active'));
+            document.getElementById(`view-${mode}`).classList.add('active');
+            btnElement.classList.add('active');
+            if (mode === 'drawing') setTimeout(resizeCanvas, 50);
+        }
+
+        // Trackpad
+        const trackpad = document.getElementById('trackpad-area');
+        const scrollZone = document.getElementById('scroll-zone');
+        let lastTouch = null;
+        let isScrolling = false;
+        let touchStartTime = 0;
+        let touchStartPos = {x:0, y:0};
+
+        trackpad.addEventListener('touchstart', (e) => {
+            const touch = e.touches[0];
+            const rect = scrollZone.getBoundingClientRect();
+            isScrolling = touch.clientX >= rect.left;
+            lastTouch = { x: touch.clientX, y: touch.clientY };
+            touchStartTime = Date.now();
+            touchStartPos = { x: touch.clientX, y: touch.clientY };
+        }, { passive: false });
+
+        trackpad.addEventListener('touchmove', (e) => {
+            e.preventDefault();
+            if (!lastTouch) return;
+            const touch = e.touches[0];
+            const dx = touch.clientX - lastTouch.x;
+            const dy = touch.clientY - lastTouch.y;
+            if (isScrolling) {
+                socket.emit('mouse_scroll', { dy: dy });
+            } else {
+                socket.emit('mouse_move', { dx: dx * 1.5, dy: dy * 1.5 });
+            }
+            lastTouch = { x: touch.clientX, y: touch.clientY };
+        }, { passive: false });
+
+        trackpad.addEventListener('touchend', (e) => {
+            if (lastTouch) {
+                const duration = Date.now() - touchStartTime;
+                const distance = Math.hypot(lastTouch.x - touchStartPos.x, lastTouch.y - touchStartPos.y);
+                if (duration < 200 && distance < 10 && !isScrolling) {
+                    haptic();
+                    socket.emit('mouse_click', { button: 'left' });
+                }
+            }
+            lastTouch = null;
+            isScrolling = false;
+        });
+
+        // Drawing
+        const canvas = document.getElementById('draw-canvas');
+        const ctx = canvas.getContext('2d');
+        let isDrawing = false;
+        let currentStroke = [];
+
+        function resizeCanvas() {
+            canvas.width = canvas.clientWidth;
+            canvas.height = canvas.clientHeight;
+        }
+        window.addEventListener('resize', resizeCanvas);
+        resizeCanvas();
+
+        canvas.addEventListener('touchstart', (e) => {
+            e.preventDefault();
+            isDrawing = true;
+            currentStroke = [];
+            const touch = e.touches[0];
+            const rect = canvas.getBoundingClientRect();
+            const x = touch.clientX - rect.left;
+            const y = touch.clientY - rect.top;
+            
+            ctx.beginPath();
+            ctx.moveTo(x, y);
+            ctx.strokeStyle = '#ff3333';
+            ctx.lineWidth = 3;
+            ctx.lineCap = 'round';
+            ctx.lineJoin = 'round';
+            currentStroke.push([x / canvas.width, y / canvas.height]);
+        }, { passive: false });
+
+        canvas.addEventListener('touchmove', (e) => {
+            e.preventDefault();
+            if (!isDrawing) return;
+            const touch = e.touches[0];
+            const rect = canvas.getBoundingClientRect();
+            const x = touch.clientX - rect.left;
+            const y = touch.clientY - rect.top;
+            
+            ctx.lineTo(x, y);
+            ctx.stroke();
+            currentStroke.push([x / canvas.width, y / canvas.height]);
+            
+            if (currentStroke.length > 20) {
+                socket.emit('stroke', { points: currentStroke });
+                currentStroke = [currentStroke[currentStroke.length - 1]];
+            }
+        }, { passive: false });
+
+        canvas.addEventListener('touchend', (e) => {
+            e.preventDefault();
+            if (isDrawing && currentStroke.length > 1) {
+                socket.emit('stroke', { points: currentStroke });
+            }
+            isDrawing = false;
+        });
+
+        document.getElementById('btn-clear').addEventListener('click', () => {
+            haptic();
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            socket.emit('clear');
+        });
+
+        // Presentation
+        function sendSlide(action) {
+            haptic();
+            socket.emit('slide', { action: action });
+        }
+    </script>
+</body>
+</html>
